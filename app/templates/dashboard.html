@@ -1,0 +1,268 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard — NetLogger{% endblock %}
+{% block topbar_title %}Live Dashboard{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
+{% endblock %}
+
+{% block content %}
+
+<!-- Stat Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">
+    <div class="stat-card d-flex justify-content-between align-items-start">
+      <div>
+        <div class="stat-label">Devices</div>
+        <div class="stat-value" id="stat-devices">{{ total_devices }}</div>
+      </div>
+      <i class="bi bi-hdd-network stat-icon" style="color:var(--accent)"></i>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="stat-card d-flex justify-content-between align-items-start">
+      <div>
+        <div class="stat-label">Sessions</div>
+        <div class="stat-value" id="stat-sessions">{{ total_sessions }}</div>
+      </div>
+      <i class="bi bi-activity stat-icon" style="color:var(--green)"></i>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="stat-card d-flex justify-content-between align-items-start">
+      <div>
+        <div class="stat-label">Open Alerts</div>
+        <div class="stat-value" id="stat-alerts">{{ open_alerts }}</div>
+      </div>
+      <i class="bi bi-shield-exclamation stat-icon" style="color:var(--yellow)"></i>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="stat-card d-flex justify-content-between align-items-start">
+      <div>
+        <div class="stat-label">Blacklisted</div>
+        <div class="stat-value" id="stat-blacklisted">{{ blacklisted }}</div>
+      </div>
+      <i class="bi bi-slash-circle stat-icon" style="color:var(--red)"></i>
+    </div>
+  </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row g-3 mb-4">
+  <div class="col-lg-8">
+    <div class="card h-100">
+      <div class="card-header">Sessions / Minute (Last 30 min)</div>
+      <div class="card-body" style="padding:16px;">
+        <canvas id="chart-hourly" height="90"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header">Protocol Breakdown</div>
+      <div class="card-body d-flex align-items-center justify-content-center" style="padding:16px;">
+        <canvas id="chart-protocol" height="160"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Live Sessions Table + Urgent Alerts -->
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header">
+        <span>Live Session Feed</span>
+        <span class="live-badge"><div class="live-dot"></div> AUTO-UPDATE</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Src IP</th>
+              <th>Dst IP</th>
+              <th>Proto</th>
+              <th>Dst Port</th>
+              <th>Size</th>
+              <th>Flag</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody id="session-feed">
+            {% for s in recent_sessions %}
+            <tr>
+              <td><span class="ip-chip">{{ s.src_device.ip_address if s.src_device else 'N/A' }}</span></td>
+              <td><span class="ip-chip">{{ s.dst_device.ip_address if s.dst_device else 'N/A' }}</span></td>
+              <td>{{ s.protocol }}</td>
+              <td>{{ s.dst_port or '-' }}</td>
+              <td>{{ s.packet_size }}B</td>
+              <td><span class="badge badge-flag-{{ s.flag }}">{{ s.flag }}</span></td>
+              <td style="color:var(--text-dim)">{{ s.timestamp.strftime('%H:%M:%S') }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header">Urgent Alerts</div>
+      <div class="card-body" style="padding:0;">
+        {% if urgent_alerts %}
+          {% for alert in urgent_alerts %}
+          <div style="padding:12px 16px; border-bottom:1px solid var(--border);">
+            <div class="d-flex justify-content-between align-items-start mb-1">
+              <span class="badge badge-sev-{{ alert.severity }}">{{ alert.severity }}</span>
+              <span style="font-size:10px; color:var(--text-dim); font-family:var(--mono);">
+                {{ alert.timestamp.strftime('%H:%M:%S') }}
+              </span>
+            </div>
+            <div style="font-family:var(--mono); font-size:11px; color:var(--accent);">
+              {{ alert.device.ip_address }}
+            </div>
+            <div style="font-size:11px; color:var(--text-dim); margin-top:2px;">
+              {{ alert.alert_type.replace('_', ' ') | upper }}
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div style="padding:20px; text-align:center; color:var(--text-dim); font-size:12px;">
+            <i class="bi bi-shield-check" style="font-size:22px; display:block; margin-bottom:6px; color:var(--green);"></i>
+            No urgent alerts
+          </div>
+        {% endif %}
+        <div style="padding:10px 16px;">
+          <a href="{{ url_for('alerts.index') }}" class="btn btn-outline-accent btn-sm w-100">View All Alerts</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// ── Chart.js defaults ──
+Chart.defaults.color = '#5c7494';
+Chart.defaults.borderColor = '#1e2d45';
+Chart.defaults.font.family = "'Share Tech Mono', monospace";
+Chart.defaults.font.size = 11;
+
+// ── Hourly line chart ──
+const hourlyCtx = document.getElementById('chart-hourly').getContext('2d');
+const hourlyChart = new Chart(hourlyCtx, {
+  type: 'line',
+  data: { labels: [], datasets: [{
+    label: 'Sessions',
+    data: [],
+    borderColor: '#00e5ff',
+    backgroundColor: 'rgba(0,229,255,0.06)',
+    borderWidth: 2,
+    pointRadius: 3,
+    pointBackgroundColor: '#00e5ff',
+    tension: 0.4,
+    fill: true,
+  }]},
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: '#1e2d45' } },
+      y: { grid: { color: '#1e2d45' }, beginAtZero: true },
+    }
+  }
+});
+
+// ── Protocol doughnut chart ──
+const protoCtx = document.getElementById('chart-protocol').getContext('2d');
+const protoChart = new Chart(protoCtx, {
+  type: 'doughnut',
+  data: { labels: [], datasets: [{
+    data: [],
+    backgroundColor: ['#00e5ff','#00ff88','#ffd600','#ff6d00','#ff3b5c'],
+    borderColor: '#0f1520',
+    borderWidth: 3,
+  }]},
+  options: {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: { padding: 12, boxWidth: 10 }
+      }
+    },
+    cutout: '65%',
+  }
+});
+
+// ── Fetch and update stats + charts ──
+function refreshStats() {
+  fetch('/api/stats')
+    .then(r => r.json())
+    .then(data => {
+      // Update stat cards
+      document.getElementById('stat-devices').textContent    = data.summary.total_devices;
+      document.getElementById('stat-sessions').textContent   = data.summary.total_sessions;
+      document.getElementById('stat-alerts').textContent     = data.summary.open_alerts;
+      document.getElementById('stat-blacklisted').textContent = data.summary.blacklisted;
+
+      // Update hourly chart
+      hourlyChart.data.labels   = data.hourly_sessions.map(r => r.hour);
+      hourlyChart.data.datasets[0].data = data.hourly_sessions.map(r => r.count);
+      hourlyChart.update('none');
+
+      // Update protocol chart
+      protoChart.data.labels = data.protocol_breakdown.map(r => r.protocol);
+      protoChart.data.datasets[0].data = data.protocol_breakdown.map(r => r.count);
+      protoChart.update('none');
+    });
+}
+
+// ── SocketIO: live session feed ──
+const socket = io();
+
+socket.on('new_session', function(session) {
+  const tbody = document.getElementById('session-feed');
+  const flagClass = {
+    normal: 'badge-flag-normal',
+    suspicious: 'badge-flag-suspicious',
+    blocked: 'badge-flag-blocked'
+  }[session.flag] || 'badge-flag-normal';
+
+  const row = document.createElement('tr');
+  row.style.animation = 'fadeIn 0.3s ease';
+  row.innerHTML = `
+    <td><span class="ip-chip">${session.src_ip || 'N/A'}</span></td>
+    <td><span class="ip-chip">${session.dst_ip || 'N/A'}</span></td>
+    <td>${session.protocol || '-'}</td>
+    <td>${session.dst_port || '-'}</td>
+    <td>${session.packet_size}B</td>
+    <td><span class="badge ${flagClass}">${session.flag}</span></td>
+    <td style="color:var(--text-dim)">${session.timestamp.split(' ')[1]}</td>
+  `;
+
+  tbody.insertBefore(row, tbody.firstChild);
+
+  // Keep table at max 20 rows
+  while (tbody.rows.length > 20) {
+    tbody.deleteRow(tbody.rows.length - 1);
+  }
+});
+
+// ── Auto-refresh stats every 10 seconds ──
+refreshStats();
+setInterval(refreshStats, 10000);
+</script>
+
+<style>
+@keyframes fadeIn {
+  from { opacity: 0; background: rgba(0,229,255,0.08); }
+  to   { opacity: 1; background: transparent; }
+}
+</style>
+{% endblock %}

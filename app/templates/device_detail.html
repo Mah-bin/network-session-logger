@@ -1,0 +1,204 @@
+{% extends 'base.html' %}
+{% block title %}{{ device.ip_address }} — NetLogger{% endblock %}
+{% block topbar_title %}Device Detail{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <a href="{{ url_for('devices.index') }}" style="font-size:11px; color:var(--text-dim); text-decoration:none;">
+    &larr; Back to Devices
+  </a>
+  <h1 style="margin-top:8px;">{{ device.ip_address }}</h1>
+  <p>{{ device.hostname or 'No hostname resolved' }} &bull; {{ device.vendor or 'Unknown vendor' }}</p>
+</div>
+
+<!-- Device Info + Actions -->
+<div class="row g-3 mb-4">
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header">Device Info</div>
+      <div class="card-body">
+        {% set info = [
+          ('IP Address',  device.ip_address),
+          ('MAC Address', device.mac_address or 'N/A'),
+          ('Hostname',    device.hostname or 'Unknown'),
+          ('Vendor',      device.vendor or 'Unknown'),
+          ('First Seen',  device.first_seen.strftime('%Y-%m-%d %H:%M') if device.first_seen else 'N/A'),
+          ('Last Seen',   device.last_seen.strftime('%Y-%m-%d %H:%M') if device.last_seen else 'N/A'),
+        ] %}
+        {% for label, value in info %}
+        <div style="display:flex; justify-content:space-between; margin-bottom:10px; font-size:12px;">
+          <span style="color:var(--text-dim);">{{ label }}</span>
+          <span style="font-family:var(--mono); color:var(--text);">{{ value }}</span>
+        </div>
+        {% endfor %}
+
+        <!-- Risk Score -->
+        <div style="margin-top:16px;">
+          <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+            <span style="font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:1px;">Risk Score</span>
+            <span style="font-family:var(--mono); font-size:12px;
+              color:{% if device.risk_score >= 70 %}var(--red){% elif device.risk_score >= 40 %}var(--orange){% else %}var(--green){% endif %}">
+              {{ device.risk_score }}/100
+            </span>
+          </div>
+          <div class="risk-bar" style="height:6px;">
+            <div class="risk-fill" style="
+              width:{{ device.risk_score }}%;
+              background:{% if device.risk_score >= 70 %}var(--red){% elif device.risk_score >= 40 %}var(--orange){% elif device.risk_score >= 10 %}var(--yellow){% else %}var(--green){% endif %};
+            "></div>
+          </div>
+        </div>
+
+        <!-- Status Badge -->
+        <div style="margin-top:14px; text-align:center;">
+          {% if device.is_blacklisted %}
+            <span class="badge badge-flag-blocked" style="font-size:11px; padding:5px 12px;">BLACKLISTED</span>
+          {% elif device.is_whitelisted %}
+            <span class="badge badge-flag-normal" style="font-size:11px; padding:5px 12px;">WHITELISTED</span>
+          {% else %}
+            <span class="badge" style="background:rgba(255,255,255,0.05); color:var(--text-dim); font-size:11px; padding:5px 12px;">NOT CLASSIFIED</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Actions -->
+  {% if current_user.is_analyst() %}
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header">Actions</div>
+      <div class="card-body d-flex flex-column gap-3">
+
+        <div>
+          <div style="font-size:11px; color:var(--text-dim); margin-bottom:6px; text-transform:uppercase; letter-spacing:1px;">Whitelist Device</div>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="whitelist-reason" class="form-control form-control-sm" placeholder="Reason (optional)">
+            <form method="POST" action="{{ url_for('devices.whitelist', device_id=device.id) }}" id="whitelist-form">
+              <input type="hidden" name="reason" id="whitelist-reason-hidden">
+              <button type="submit" class="btn btn-sm" style="background:rgba(0,255,136,0.12); color:var(--green); border:1px solid rgba(0,255,136,0.2); white-space:nowrap;"
+                onclick="document.getElementById('whitelist-reason-hidden').value = document.getElementById('whitelist-reason').value">
+                Whitelist
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size:11px; color:var(--text-dim); margin-bottom:6px; text-transform:uppercase; letter-spacing:1px;">Blacklist Device</div>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="blacklist-reason" class="form-control form-control-sm" placeholder="Reason (optional)">
+            <form method="POST" action="{{ url_for('devices.blacklist', device_id=device.id) }}" id="blacklist-form">
+              <input type="hidden" name="reason" id="blacklist-reason-hidden">
+              <button type="submit" class="btn btn-sm btn-outline-danger"
+                onclick="document.getElementById('blacklist-reason-hidden').value = document.getElementById('blacklist-reason').value">
+                Blacklist
+              </button>
+            </form>
+          </div>
+        </div>
+
+        {% if current_user.is_admin() and (device.is_whitelisted or device.is_blacklisted) %}
+        <div>
+          <form method="POST" action="{{ url_for('devices.remove_rule', device_id=device.id) }}">
+            <button type="submit" class="btn btn-sm w-100" style="background:rgba(255,255,255,0.05); color:var(--text-dim); border:1px solid var(--border);">
+              Clear Access Rule
+            </button>
+          </form>
+        </div>
+        {% endif %}
+
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Top Destinations -->
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header">Top Destinations</div>
+      <div class="card-body" style="padding:0;">
+        {% for dest in top_destinations %}
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 16px; border-bottom:1px solid var(--border);">
+          <span class="ip-chip">{{ dest.ip_address }}</span>
+          <span style="font-family:var(--mono); font-size:11px; color:var(--text-dim);">{{ dest.count }} sessions</span>
+        </div>
+        {% else %}
+        <div style="padding:20px; text-align:center; color:var(--text-dim); font-size:12px;">No data yet</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Session History -->
+<div class="card mb-4">
+  <div class="card-header">
+    Session History
+    <span style="color:var(--text-dim); font-size:11px;">Last 50 outbound sessions</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Dst IP</th>
+          <th>Protocol</th>
+          <th>Dst Port</th>
+          <th>Size</th>
+          <th>Flag</th>
+          <th>Timestamp</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in sessions %}
+        <tr>
+          <td><span class="ip-chip">{{ s.dst_device.ip_address if s.dst_device else 'N/A' }}</span></td>
+          <td>{{ s.protocol }}</td>
+          <td>{{ s.dst_port or '-' }}</td>
+          <td>{{ s.packet_size }}B</td>
+          <td><span class="badge badge-flag-{{ s.flag }}">{{ s.flag }}</span></td>
+          <td style="color:var(--text-dim)">{{ s.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" style="text-align:center; color:var(--text-dim); padding:24px;">No sessions recorded</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Alerts for this device -->
+<div class="card">
+  <div class="card-header">Alerts</div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr><th>Type</th><th>Description</th><th>Severity</th><th>Time</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        {% for alert in alerts %}
+        <tr>
+          <td style="font-family:var(--mono); font-size:11px;">{{ alert.alert_type.replace('_',' ') | upper }}</td>
+          <td style="color:var(--text-dim); font-size:11px; max-width:320px;">{{ alert.description }}</td>
+          <td><span class="badge badge-sev-{{ alert.severity }}">{{ alert.severity }}</span></td>
+          <td style="color:var(--text-dim); font-size:11px;">{{ alert.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+          <td>
+            {% if alert.is_resolved %}
+              <span class="badge badge-flag-normal">resolved</span>
+            {% else %}
+              <span class="badge badge-flag-suspicious">open</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" style="text-align:center; color:var(--text-dim); padding:24px;">No alerts for this device</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

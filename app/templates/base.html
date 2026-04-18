@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}NetLogger{% endblock %}</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Bootstrap -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Bootstrap Icons -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg:         #090d13;
+      --surface:    #0f1520;
+      --surface2:   #151e2e;
+      --border:     #1e2d45;
+      --accent:     #00e5ff;
+      --accent-dim: #00aacc;
+      --green:      #00ff88;
+      --red:        #ff3b5c;
+      --yellow:     #ffd600;
+      --orange:     #ff6d00;
+      --text:       #cdd9e5;
+      --text-dim:   #5c7494;
+      --mono:       'Share Tech Mono', monospace;
+      --sans:       'DM Sans', sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      min-height: 100vh;
+      display: flex;
+    }
+
+    /* ── Sidebar ── */
+    #sidebar {
+      width: 220px;
+      min-height: 100vh;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      z-index: 100;
+    }
+
+    .sidebar-brand {
+      padding: 20px 20px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sidebar-brand .logo-text {
+      font-family: var(--mono);
+      font-size: 15px;
+      color: var(--accent);
+      letter-spacing: 1px;
+    }
+
+    .sidebar-brand .logo-sub {
+      font-size: 10px;
+      color: var(--text-dim);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    .sidebar-nav {
+      padding: 16px 0;
+      flex: 1;
+    }
+
+    .nav-section-label {
+      font-size: 9px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      padding: 12px 20px 6px;
+    }
+
+    .sidebar-nav a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 20px;
+      color: var(--text-dim);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.15s;
+      border-left: 3px solid transparent;
+    }
+
+    .sidebar-nav a:hover {
+      color: var(--text);
+      background: var(--surface2);
+      border-left-color: var(--border);
+    }
+
+    .sidebar-nav a.active {
+      color: var(--accent);
+      background: rgba(0,229,255,0.05);
+      border-left-color: var(--accent);
+    }
+
+    .sidebar-nav a i { font-size: 15px; }
+
+    .sidebar-footer {
+      padding: 14px 20px;
+      border-top: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    .sidebar-footer .user-role {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--accent-dim);
+    }
+
+    /* ── Main content ── */
+    #main {
+      margin-left: 220px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* ── Topbar ── */
+    #topbar {
+      height: 52px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .topbar-title {
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--text);
+      letter-spacing: 0.5px;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .live-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--green);
+    }
+
+    .live-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse 1.4s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    /* ── Page content ── */
+    .page-content {
+      padding: 28px;
+      flex: 1;
+    }
+
+    .page-header {
+      margin-bottom: 24px;
+    }
+
+    .page-header h1 {
+      font-family: var(--mono);
+      font-size: 18px;
+      color: var(--text);
+      letter-spacing: 0.5px;
+    }
+
+    .page-header p {
+      color: var(--text-dim);
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .card-header {
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 18px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-dim);
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-body { padding: 18px; }
+
+    /* ── Stat cards ── */
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 18px 20px;
+    }
+
+    .stat-label {
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-family: var(--mono);
+      font-size: 28px;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    .stat-icon {
+      font-size: 22px;
+      opacity: 0.4;
+    }
+
+    /* ── Tables ── */
+    .table {
+      color: var(--text);
+      font-size: 13px;
+      margin: 0;
+    }
+
+    .table thead th {
+      background: var(--surface2);
+      color: var(--text-dim);
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      border-color: var(--border);
+      padding: 10px 14px;
+      font-weight: 400;
+    }
+
+    .table tbody td {
+      border-color: var(--border);
+      padding: 9px 14px;
+      vertical-align: middle;
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    .table tbody tr:hover { background: var(--surface2); }
+
+    .table-responsive { border-radius: 8px; overflow: hidden; }
+
+    /* ── Badges ── */
+    .badge-flag-normal     { background: rgba(0,255,136,0.12); color: var(--green); }
+    .badge-flag-suspicious { background: rgba(255,109,0,0.15);  color: var(--orange); }
+    .badge-flag-blocked    { background: rgba(255,59,92,0.15);   color: var(--red); }
+
+    .badge-sev-low      { background: rgba(0,229,255,0.1);    color: var(--accent); }
+    .badge-sev-medium   { background: rgba(255,214,0,0.12);   color: var(--yellow); }
+    .badge-sev-high     { background: rgba(255,109,0,0.15);   color: var(--orange); }
+    .badge-sev-critical { background: rgba(255,59,92,0.15);   color: var(--red); }
+
+    .badge-role-admin    { background: rgba(255,59,92,0.12);  color: var(--red); }
+    .badge-role-analyst  { background: rgba(255,214,0,0.12);  color: var(--yellow); }
+    .badge-role-viewer   { background: rgba(0,229,255,0.1);   color: var(--accent); }
+
+    .badge {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.5px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-weight: 400;
+    }
+
+    /* ── Buttons ── */
+    .btn { font-size: 12px; font-family: var(--sans); font-weight: 500; border-radius: 5px; }
+
+    .btn-accent {
+      background: var(--accent);
+      color: #000;
+      border: none;
+    }
+    .btn-accent:hover { background: var(--accent-dim); color: #000; }
+
+    .btn-outline-accent {
+      background: transparent;
+      border: 1px solid var(--accent);
+      color: var(--accent);
+    }
+    .btn-outline-accent:hover { background: rgba(0,229,255,0.08); color: var(--accent); }
+
+    .btn-outline-danger {
+      background: transparent;
+      border: 1px solid var(--red);
+      color: var(--red);
+    }
+    .btn-outline-danger:hover { background: rgba(255,59,92,0.08); color: var(--red); }
+
+    .btn-sm { padding: 4px 10px; font-size: 11px; }
+
+    /* ── Forms ── */
+    .form-control, .form-select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 13px;
+      border-radius: 5px;
+    }
+    .form-control:focus, .form-select:focus {
+      background: var(--surface2);
+      border-color: var(--accent);
+      color: var(--text);
+      box-shadow: 0 0 0 2px rgba(0,229,255,0.1);
+    }
+    .form-control::placeholder { color: var(--text-dim); }
+    .form-label { font-size: 11px; color: var(--text-dim); margin-bottom: 5px; letter-spacing: 0.5px; }
+
+    /* ── Flash messages ── */
+    .alert-success { background: rgba(0,255,136,0.08); border-color: rgba(0,255,136,0.2); color: var(--green); }
+    .alert-danger  { background: rgba(255,59,92,0.08);  border-color: rgba(255,59,92,0.2);  color: var(--red); }
+    .alert-info    { background: rgba(0,229,255,0.08);  border-color: rgba(0,229,255,0.2);  color: var(--accent); }
+    .alert-warning { background: rgba(255,214,0,0.08);  border-color: rgba(255,214,0,0.2);  color: var(--yellow); }
+
+    /* ── Risk score bar ── */
+    .risk-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+    .risk-fill { height: 100%; border-radius: 2px; transition: width 0.4s; }
+
+    /* ── Pagination ── */
+    .page-link { background: var(--surface2); border-color: var(--border); color: var(--text-dim); font-size: 12px; }
+    .page-link:hover { background: var(--surface); color: var(--accent); border-color: var(--border); }
+    .page-item.active .page-link { background: var(--accent); border-color: var(--accent); color: #000; }
+    .page-item.disabled .page-link { background: var(--surface); color: var(--text-dim); }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+    /* ── IP chip ── */
+    .ip-chip {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--accent);
+      background: rgba(0,229,255,0.06);
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid rgba(0,229,255,0.15);
+      white-space: nowrap;
+    }
+  </style>
+
+  {% block extra_head %}{% endblock %}
+</head>
+
+<body>
+
+<!-- ── Sidebar ── -->
+<nav id="sidebar">
+  <div class="sidebar-brand">
+    <div class="logo-text">&#x25B6; NetLogger</div>
+    <div class="logo-sub">Session Monitor</div>
+  </div>
+
+  <div class="sidebar-nav">
+    <div class="nav-section-label">Monitor</div>
+    <a href="{{ url_for('dashboard.index') }}" class="{{ 'active' if request.endpoint == 'dashboard.index' }}">
+      <i class="bi bi-activity"></i> Live Dashboard
+    </a>
+    <a href="{{ url_for('sessions.index') }}" class="{{ 'active' if request.endpoint == 'sessions.index' }}">
+      <i class="bi bi-list-ul"></i> Sessions
+    </a>
+
+    <div class="nav-section-label">Network</div>
+    <a href="{{ url_for('devices.index') }}" class="{{ 'active' if request.endpoint in ['devices.index','devices.detail'] }}">
+      <i class="bi bi-hdd-network"></i> Devices
+    </a>
+    <a href="{{ url_for('alerts.index') }}" class="{{ 'active' if request.endpoint == 'alerts.index' }}">
+      <i class="bi bi-shield-exclamation"></i> Alerts
+      {% set open = namespace(count=0) %}
+    </a>
+
+    {% if current_user.is_admin() %}
+    <div class="nav-section-label">Admin</div>
+    <a href="{{ url_for('auth.register') }}" class="{{ 'active' if request.endpoint == 'auth.register' }}">
+      <i class="bi bi-person-plus"></i> Add User
+    </a>
+    {% endif %}
+  </div>
+
+  <div class="sidebar-footer">
+    <div style="font-weight:600; color: var(--text); margin-bottom:2px;">{{ current_user.username }}</div>
+    <div class="user-role">{{ current_user.role | upper }}</div>
+    <a href="{{ url_for('auth.logout') }}" style="display:block; margin-top:10px; color:var(--text-dim); font-size:11px; text-decoration:none;">
+      <i class="bi bi-box-arrow-left"></i> Logout
+    </a>
+  </div>
+</nav>
+
+<!-- ── Main ── -->
+<div id="main">
+
+  <!-- Topbar -->
+  <div id="topbar">
+    <div class="topbar-title">{% block topbar_title %}Network Session Logger{% endblock %}</div>
+    <div class="topbar-right">
+      <div class="live-badge">
+        <div class="live-dot"></div> LIVE
+      </div>
+      <span style="font-size:11px; color:var(--text-dim); font-family:var(--mono);" id="topbar-clock"></span>
+    </div>
+  </div>
+
+  <!-- Flash messages -->
+  <div style="padding: 0 28px;">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div style="margin-top: 16px;">
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert" style="font-size:13px; border-radius:6px;">
+              {{ message }}
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" style="filter:invert(1); opacity:0.4;"></button>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+  </div>
+
+  <!-- Page content -->
+  <div class="page-content">
+    {% block content %}{% endblock %}
+  </div>
+
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+
+<!-- Clock -->
+<script>
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('topbar-clock').textContent =
+      now.toLocaleTimeString('en-GB', { hour12: false });
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+</script>
+
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

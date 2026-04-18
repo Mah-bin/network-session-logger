@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block title %}Add User — NetLogger{% endblock %}
+{% block topbar_title %}Add User{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Add User</h1>
+  <p>Create a new analyst or viewer account</p>
+</div>
+
+<div style="max-width:420px;">
+  <div class="card">
+    <div class="card-header">New Account</div>
+    <div class="card-body">
+      <div style="margin-bottom:16px;">
+        <label class="form-label">Username</label>
+        <input type="text" name="username" id="reg-username" class="form-control" placeholder="enter username" autocomplete="off">
+      </div>
+      <div style="margin-bottom:16px;">
+        <label class="form-label">Password</label>
+        <input type="password" name="password" id="reg-password" class="form-control" placeholder="••••••••">
+      </div>
+      <div style="margin-bottom:24px;">
+        <label class="form-label">Role</label>
+        <select name="role" id="reg-role" class="form-select">
+          <option value="viewer">Viewer — read-only access</option>
+          <option value="analyst">Analyst — can resolve alerts and whitelist</option>
+          <option value="admin">Admin — full access</option>
+        </select>
+      </div>
+      <button class="btn btn-accent w-100" onclick="doRegister()">Create Account</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function doRegister() {
+  const username = document.getElementById('reg-username').value;
+  const password = document.getElementById('reg-password').value;
+  const role     = document.getElementById('reg-role').value;
+
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '/register';
+
+  [['username', username], ['password', password], ['role', role]].forEach(([name, val]) => {
+    const inp = document.createElement('input');
+    inp.type = 'hidden'; inp.name = name; inp.value = val;
+    form.appendChild(inp);
+  });
+
+  document.body.appendChild(form);
+  form.submit();
+}
+</script>
+{% endblock %}

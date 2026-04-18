@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+{% block title %}Devices — NetLogger{% endblock %}
+{% block topbar_title %}Device Registry{% endblock %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-start">
+  <div>
+    <h1>Device Registry</h1>
+    <p>All IP addresses discovered on the network</p>
+  </div>
+  <div style="font-family:var(--mono); font-size:12px; color:var(--text-dim); text-align:right;">
+    <div><span style="color:var(--green);">{{ local_devices|length }}</span> local</div>
+    <div><span style="color:var(--text-dim);">{{ external_devices|length }}</span> external</div>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body" style="padding:12px 18px;">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-4">
+        <label class="form-label">Filter by Subnet</label>
+        <input type="text" id="f-subnet" class="form-control form-control-sm"
+          placeholder="e.g. 172.25.163" value="{{ subnet }}">
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-accent btn-sm" onclick="applySubnet()">Filter</button>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-sm" style="background:rgba(255,255,255,0.05); color:var(--text-dim); border:1px solid var(--border);"
+          onclick="window.location.href='/devices'">Clear</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Local Devices -->
+<div style="margin-bottom:10px; font-family:var(--mono); font-size:11px; color:var(--green); letter-spacing:2px; text-transform:uppercase;">
+  <i class="bi bi-hdd-network"></i> Local Devices
+</div>
+<div class="card mb-4">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>IP Address</th>
+          <th>MAC</th>
+          <th>Hostname</th>
+          <th>Vendor</th>
+          <th>Risk</th>
+          <th>Status</th>
+          <th>Last Seen</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for device in local_devices %}
+        <tr>
+          <td><span class="ip-chip">{{ device.ip_address }}</span></td>
+          <td style="color:var(--text-dim)">{{ device.mac_address or 'N/A' }}</td>
+          <td style="color:var(--text-dim)">{{ device.hostname or 'Unknown' }}</td>
+          <td style="color:var(--text-dim)">{{ device.vendor or 'Unknown' }}</td>
+          <td style="min-width:80px;">
+            <div class="risk-bar">
+              <div class="risk-fill" style="
+                width: {{ device.risk_score }}%;
+                background: {% if device.risk_score >= 70 %}var(--red)
+                            {% elif device.risk_score >= 40 %}var(--orange)
+                            {% elif device.risk_score >= 10 %}var(--yellow)
+                            {% else %}var(--green){% endif %};
+              "></div>
+            </div>
+            <span style="font-family:var(--mono); font-size:10px; color:var(--text-dim);">{{ device.risk_score }}/100</span>
+          </td>
+          <td>
+            {% set minutes_ago = ((now - device.last_seen).total_seconds() / 60) | int %}
+            {% if minutes_ago <= 5 %}
+              <span class="badge" style="background:rgba(0,255,136,0.12); color:var(--green); margin-right:4px;">ONLINE</span>
+            {% else %}
+              <span class="badge" style="background:rgba(255,255,255,0.05); color:var(--text-dim); margin-right:4px;">OFFLINE</span>
+            {% endif %}
+            {% if device.is_blacklisted %}
+              <span class="badge badge-flag-blocked">BLACKLISTED</span>
+            {% elif device.is_whitelisted %}
+              <span class="badge badge-flag-normal">WHITELISTED</span>
+            {% endif %}
+          </td>
+          <td style="color:var(--text-dim); font-size:11px;">
+            {{ device.last_seen.strftime('%Y-%m-%d %H:%M') if device.last_seen else 'N/A' }}
+          </td>
+          <td>
+            <a href="{{ url_for('devices.detail', device_id=device.id) }}" class="btn btn-outline-accent btn-sm">View</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" style="text-align:center; color:var(--text-dim); padding:24px;">
+            No local devices discovered yet.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- External Devices -->
+<div style="margin-bottom:10px; font-family:var(--mono); font-size:11px; color:var(--text-dim); letter-spacing:2px; text-transform:uppercase;">
+  <i class="bi bi-globe"></i> External IPs
+</div>
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>IP Address</th>
+          <th>Hostname</th>
+          <th>Last Seen</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for device in external_devices %}
+        <tr>
+          <td><span class="ip-chip" style="color:var(--text-dim); border-color:rgba(255,255,255,0.08);">{{ device.ip_address }}</span></td>
+          <td style="color:var(--text-dim); font-size:11px;">{{ device.hostname or 'Unknown' }}</td>
+          <td style="color:var(--text-dim); font-size:11px;">
+            {{ device.last_seen.strftime('%Y-%m-%d %H:%M') if device.last_seen else 'N/A' }}
+          </td>
+          <td>
+            <a href="{{ url_for('devices.detail', device_id=device.id) }}" class="btn btn-sm" style="font-size:10px; color:var(--text-dim); border:1px solid var(--border); background:transparent;">View</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="4" style="text-align:center; color:var(--text-dim); padding:24px;">No external IPs logged.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function applySubnet() {
+  const subnet = document.getElementById('f-subnet').value;
+  window.location.href = '/devices?subnet=' + subnet;
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') applySubnet();
+});
+
+// Auto-refresh every 30 seconds to keep online status current
+setInterval(() => {
+  window.location.reload();
+}, 30000);
+</script>
+{% endblock %}

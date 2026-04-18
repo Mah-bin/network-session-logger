@@ -1,0 +1,10 @@
+flask
+flask-sqlalchemy
+flask-socketio
+flask-login
+flask-bcrypt
+pymysql
+scapy
+eventlet
+python-dotenv
+werkzeug
