@@ -10,6 +10,8 @@ Network Session Logger is a Flask-based web application that captures network tr
 - **User Authentication**: Secure login system with hashed passwords using Flask-Login and Flask-Bcrypt.
 - **Persistent Storage**: Stores network logs and user data in a MySQL database.
 
+![image_alt](https://github.com/Mah-bin/network-session-logger/blob/main/Dashboard.png?raw=true)
+![image_alt](https://github.com/Mah-bin/network-session-logger/blob/main/Devices.png?raw=true)
 ## Prerequisites
 
 - Python 3.x
