@@ -181,6 +181,37 @@ def remove_rule(device_id):
 
 
 # ---------------------------------------------------------------
+# POST /devices/clear-local  -- remove all local devices (admin)
+# ---------------------------------------------------------------
+@devices_bp.route('/devices/clear-local', methods=['POST'])
+@login_required
+def clear_local():
+    if not current_user.is_admin():
+        flash('Only admins can clear the device list.', 'danger')
+        return redirect(url_for('devices.index'))
+
+    local_ids = [d.id for d in Device.query.filter_by(device_type='local').all()]
+
+    if not local_ids:
+        flash('No local devices to clear.', 'info')
+        return redirect(url_for('devices.index'))
+
+    # Delete related records first (foreign-key order)
+    Session.query.filter(
+        (Session.src_device_id.in_(local_ids)) |
+        (Session.dst_device_id.in_(local_ids))
+    ).delete(synchronize_session='fetch')
+    Alert.query.filter(Alert.device_id.in_(local_ids)).delete(synchronize_session='fetch')
+    AccessRule.query.filter(AccessRule.device_id.in_(local_ids)).delete(synchronize_session='fetch')
+    Device.query.filter(Device.id.in_(local_ids)).delete(synchronize_session='fetch')
+
+    db.session.commit()
+
+    flash(f'{len(local_ids)} local device(s) cleared.', 'success')
+    return redirect(url_for('devices.index'))
+
+
+# ---------------------------------------------------------------
 # GET /api/devices  -- all devices as JSON (for live updates)
 # ---------------------------------------------------------------
 @devices_bp.route('/api/devices')

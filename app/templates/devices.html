@@ -33,8 +33,15 @@
 </div>
 
 <!-- Local Devices -->
-<div style="margin-bottom:10px; font-family:var(--mono); font-size:11px; color:var(--green); letter-spacing:2px; text-transform:uppercase;">
-  <i class="bi bi-hdd-network"></i> Local Devices
+<div style="margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;">
+  <span style="font-family:var(--mono); font-size:11px; color:var(--green); letter-spacing:2px; text-transform:uppercase;">
+    <i class="bi bi-hdd-network"></i> Local Devices
+  </span>
+  {% if local_devices and current_user.is_admin() %}
+  <button onclick="document.getElementById('clearModal').style.display='flex'" class="btn btn-sm"
+    style="font-size:10px; color:var(--red); border:1px solid rgba(255,60,60,0.3); background:rgba(255,60,60,0.06); letter-spacing:1px; text-transform:uppercase; font-family:var(--mono);"
+  ><i class="bi bi-trash3"></i> Clear All</button>
+  {% endif %}
 </div>
 <div class="card mb-4">
   <div class="table-responsive">
@@ -136,6 +143,28 @@
         {% endfor %}
       </tbody>
     </table>
+  </div>
+</div>
+<!-- Clear Local Devices Confirmation Modal -->
+<div id="clearModal" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.65); backdrop-filter:blur(4px); align-items:center; justify-content:center;">
+  <div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:28px 32px; max-width:420px; width:90%; box-shadow:0 8px 32px rgba(0,0,0,0.5);">
+    <div style="font-family:var(--mono); font-size:13px; color:var(--red); letter-spacing:1px; text-transform:uppercase; margin-bottom:14px;">
+      <i class="bi bi-exclamation-triangle"></i> Confirm Clear
+    </div>
+    <p style="color:var(--text-dim); font-size:13px; line-height:1.6; margin-bottom:20px;">
+      This will permanently delete <strong style="color:var(--text)">all {{ local_devices|length }} local device(s)</strong>
+      and their associated sessions, alerts, and access rules. This cannot be undone.
+    </p>
+    <div style="display:flex; gap:10px; justify-content:flex-end;">
+      <button onclick="document.getElementById('clearModal').style.display='none'" class="btn btn-sm"
+        style="background:rgba(255,255,255,0.05); color:var(--text-dim); border:1px solid var(--border); min-width:80px;"
+      >Cancel</button>
+      <form method="POST" action="{{ url_for('devices.clear_local') }}" style="margin:0;">
+        <button type="submit" class="btn btn-sm"
+          style="background:rgba(255,60,60,0.15); color:var(--red); border:1px solid rgba(255,60,60,0.3); min-width:80px; font-family:var(--mono);"
+        ><i class="bi bi-trash3"></i> Clear</button>
+      </form>
+    </div>
   </div>
 </div>
 {% endblock %}

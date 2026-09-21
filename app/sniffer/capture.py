@@ -115,7 +115,14 @@ def _upsert_device(ip, app, mac=None):
 
     # Check local memory cache first to avoid DB hits
     if ip in DEVICE_CACHE:
-        return Device.query.get(DEVICE_CACHE[ip])
+        device = Device.query.get(DEVICE_CACHE[ip])
+        if device:
+            device.last_seen = datetime.now()
+            if mac and not device.mac_address:
+                device.mac_address = mac
+                device.vendor = get_vendor(mac)
+            db.session.commit()
+        return device
 
     device = Device.query.filter_by(ip_address=ip).first()
     is_new = device is None
